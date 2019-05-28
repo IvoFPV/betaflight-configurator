@@ -304,19 +304,28 @@ CliAutoComplete._initTextcomplete = function() {
             search:  function(term, callback) {
                 sendOnEnter = false;
                 searcher(term, callback, cache.settings, 3);
+            }
+        }),
+
+        strategy({ // "set ="
+            match: /^(\s*set\s+\w*\s*)$/i,
+            search:  function(term, callback) {
+                sendOnEnter = false;
+                searcher('', callback, ['='], false);
             },
-            replace: function (value) {
+            replace: function(value) {
                 self.openLater();
-                return '$1' + value + ' = ';
+                return basicReplacer(value);
             }
         }),
 
         strategy({ // "set with value"
-            match: /^(\s*set\s+(\w+)\s*=\s*)(\w*)$/i,
-            search:  function(term, callback, match) {
+            match: /^(\s*set\s+(\w+))\s*=\s*(.*)$/i,
+            search: function(term, callback, match) {
                 var arr = [];
                 var settingName = match[2].toLowerCase();
                 this.isSettingValueArray = false;
+                this.value = match[3];
                 sendOnEnter = !!term;
 
                 if (settingName in cache.settingsAcceptedValues) {
@@ -338,11 +347,13 @@ CliAutoComplete._initTextcomplete = function() {
 
                 callback(arr);
             },
-            template: highlighterAnywhere,
             replace: function (value) {
-                if (this.isSettingValueArray) {
-                    return basicReplacer(value);
+                if (!this.isSettingValueArray) {
+                    // `value` is the tooltip text, so use the saved match
+                    value = this.value;
                 }
+
+                return '$1 = ' + value; // cosmetic - make sure we have spaces around the `=`
             },
             index: 3,
             isSettingValueArray: false
@@ -360,7 +371,6 @@ CliAutoComplete._initTextcomplete = function() {
                 }
                 searcher(term, callback, arr, 1);
             },
-            template: highlighterAnywhere,
             replace: function(value) {
                 if (value in cache.resourcesCount) {
                     self.openLater();
